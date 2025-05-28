@@ -1,0 +1,62 @@
+scraper:
+  timeout_seconds: 30
+  max_concurrent_requests: 10
+  user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  
+sources:
+  ycombinator:
+    enabled: true
+    base_url: "https://www.ycombinator.com"
+    endpoints:
+      - "/companies?batch=W24"
+      - "/companies?batch=S24"  
+    selectors:
+      company_name: "[data-company-name], .company-name, h3, h2"
+      website: "a[href*='http']:not([href*='ycombinator'])"
+      description: ".company-description, p"    
+
+  github_awesome:
+    enabled: true
+    repositories:
+      - "sindresorhus/awesome"
+      - "awesome-selfhosted/awesome-selfhosted" 
+      - "ripienaar/free-for-dev"
+    api_base: "https://api.github.com/repos"
+    
+  betalist:
+    enabled: true
+    base_url: "https://betalist.com"
+    endpoints:
+      - "/startups"
+    selectors:
+      startup_name: ".startup-name, h2 a"
+      website: ".startup-link, .website"
+      description: ".startup-pitch, .description"
+
+patterns:
+  email:
+    mailto: "mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})"
+    contact: "contact@|info@|hello@|support@|admin@"
+    generic: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+    
+  location:
+    country_indicators:
+      - "based in ([A-Za-z\\s]+)"
+      - "located in ([A-Za-z\\s]+)"
+      - "from ([A-Za-z\\s]+)"
+    
+  tld_mapping:
+    ".fr": "France"
+    ".de": "Germany"
+    ".uk": "United Kingdom"
+    ".ca": "Canada"
+    ".au": "Australia"
+    ".jp": "Japan"
+    ".kr": "South Korea"
+    ".sg": "Singapore"
+    ".nl": "Netherlands"
+    ".se": "Sweden"
+    ".ch": "Switzerland"
+    ".be": "Belgium"
+    ".it": "Italy"
+    ".es": "Spain"
