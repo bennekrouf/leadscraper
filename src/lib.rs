@@ -50,26 +50,6 @@ impl DataExtractor {
         })
     }
 
-    pub fn extract_email(&self, text: &str, html: &str) -> Option<String> {
-        // Try mailto links first (highest priority)
-        if let Some(caps) = self.email_patterns.mailto.captures(html) {
-            if let Some(email) = caps.get(1) {
-                return Some(email.as_str().to_string());
-            }
-        }
-
-        // Fallback to generic email pattern
-        if let Some(caps) = self.email_patterns.generic.captures(text) {
-            let email = caps.get(0)?.as_str();
-            // Filter out obvious false positives
-            if !email.contains("example.") && !email.contains("placeholder") {
-                return Some(email.to_string());
-            }
-        }
-
-        None
-    }
-
     pub fn extract_country(&self, text: &str, website: Option<&str>) -> Option<String> {
         // Try location indicators in text first
         for pattern in &self.location_patterns.country_indicators {

@@ -1,0 +1,20 @@
+{
+  "total_leads": 20,
+  "contactable_leads": 0,
+  "research_leads": 20,
+  "contact_rate": 0.0,
+  "sources_breakdown": {
+    "BetaList": {
+      "total": 20,
+      "with_contact": 0,
+      "contact_rate": 0.0
+    }
+  },
+  "countries_breakdown": {},
+  "email_types": {
+    "direct_emails": 0,
+    "github_emails": 0,
+    "no_emails": 20
+  },
+  "generated_at": "2025-05-29T08:01:56.015041Z"
+}

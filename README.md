@@ -15,9 +15,12 @@ Aggressive lead extraction system for startup data mining. Built in Rust for max
 ## Quick Start
 
 ```bash
-# Create project
-cargo new minicrm-scraper --bin
-cd minicrm-scraper
+
+# Default run (uses config/scraper.yaml, outputs to results/, verbose mode)
+cargo run
+
+# Custom configuration
+cargo run -- --config custom.yaml --output my_output
 
 # Copy source files and dependencies
 # Run scraper

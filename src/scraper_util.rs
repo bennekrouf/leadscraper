@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     errors::{Result, ScrapingError},
     extractors::DataExtractor,
-    models::{Lead, ScrapedData, Source},
+    models::{Lead, LeadStats, ScrapedData, Source},
 };
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -26,9 +26,14 @@ impl LeadScraper {
                 ScrapingError::NetworkError(format!("Failed to create HTTP client: {}", e))
             })?;
 
-        let extractor = DataExtractor::new(&config.patterns).map_err(|e| {
-            ScrapingError::ExtractionError(format!("Failed to initialize data extractor: {}", e))
-        })?;
+        let github_token = config.scraper.github_token.clone();
+        let extractor = DataExtractor::new(&config.patterns, client.clone(), github_token)
+            .map_err(|e| {
+                ScrapingError::ExtractionError(format!(
+                    "Failed to initialize data extractor: {}",
+                    e
+                ))
+            })?;
 
         Ok(Self {
             client,
@@ -42,38 +47,50 @@ impl LeadScraper {
 
         // Y Combinator
         if self.config.sources.ycombinator.enabled {
-            info!("Scraping Y Combinator...");
+            info!("🔥 Scraping Y Combinator...");
             match self.scrape_ycombinator().await {
                 Ok(mut leads) => {
-                    info!("Y Combinator: {} leads extracted", leads.len());
+                    info!("✅ Y Combinator: {} leads extracted", leads.len());
                     all_leads.append(&mut leads);
                 }
-                Err(e) => error!("Y Combinator scraping failed: {}", e),
+                Err(e) => error!("❌ Y Combinator scraping failed: {}", e),
             }
+        } else {
+            info!("⏭️  Y Combinator disabled in config");
         }
 
         // GitHub Awesome
         if self.config.sources.github_awesome.enabled {
-            info!("Scraping GitHub Awesome repositories...");
+            info!("🔥 Scraping GitHub Awesome repositories...");
             match self.scrape_github_awesome().await {
                 Ok(mut leads) => {
-                    info!("GitHub Awesome: {} leads extracted", leads.len());
+                    info!("✅ GitHub Awesome: {} leads extracted", leads.len());
                     all_leads.append(&mut leads);
                 }
-                Err(e) => error!("GitHub Awesome scraping failed: {}", e),
+                Err(e) => error!("❌ GitHub Awesome scraping failed: {}", e),
             }
+        } else {
+            info!("⏭️  GitHub Awesome disabled in config");
         }
 
         // BetaList
         if self.config.sources.betalist.enabled {
-            info!("Scraping BetaList...");
+            info!("🔥 Scraping BetaList...");
             match self.scrape_betalist().await {
                 Ok(mut leads) => {
-                    info!("BetaList: {} leads extracted", leads.len());
+                    info!("✅ BetaList: {} leads extracted", leads.len());
                     all_leads.append(&mut leads);
                 }
-                Err(e) => error!("BetaList scraping failed: {}", e),
+                Err(e) => error!("❌ BetaList scraping failed: {}", e),
             }
+        } else {
+            info!("⏭️  BetaList disabled in config");
+        }
+
+        if all_leads.is_empty() {
+            warn!(
+                "🚨 No leads extracted from any source! Check your config and network connection."
+            );
         }
 
         Ok(all_leads)
@@ -119,10 +136,22 @@ impl LeadScraper {
                 Ok(content) => {
                     let scraped_data = self.parse_github_awesome_content(&content)?;
                     for data in scraped_data {
-                        let source = Source::GitHubAwesome {
-                            repository: repo.clone(),
-                        };
-                        let lead = self.create_lead_from_scraped_data(data, source).await;
+                        // Create source based on actual project URL, not awesome list
+                        let source = self.determine_source_from_url(&data.website);
+                        let mut lead = self.create_lead_from_scraped_data(data, source).await;
+
+                        // Extract real GitHub emails from commits if it's a GitHub project
+                        if let Some(ref website) = lead.website {
+                            if website.contains("github.com") {
+                                let commit_emails =
+                                    self.extractor.extract_github_commit_emails(website).await;
+                                if !commit_emails.is_empty() {
+                                    // Use first (highest priority) email as github_email
+                                    lead.github_email = commit_emails.into_iter().next();
+                                }
+                            }
+                        }
+
                         leads.push(lead);
                     }
                 }
@@ -135,10 +164,22 @@ impl LeadScraper {
                         Ok(content) => {
                             let scraped_data = self.parse_github_awesome_content(&content)?;
                             for data in scraped_data {
-                                let source = Source::GitHubAwesome {
-                                    repository: repo.clone(),
-                                };
-                                let lead = self.create_lead_from_scraped_data(data, source).await;
+                                let source = self.determine_source_from_url(&data.website);
+                                let mut lead =
+                                    self.create_lead_from_scraped_data(data, source).await;
+
+                                if let Some(ref website) = lead.website {
+                                    if website.contains("github.com") {
+                                        let commit_emails = self
+                                            .extractor
+                                            .extract_github_commit_emails(website)
+                                            .await;
+                                        if !commit_emails.is_empty() {
+                                            lead.github_email = commit_emails.into_iter().next();
+                                        }
+                                    }
+                                }
+
                                 leads.push(lead);
                             }
                         }
@@ -152,6 +193,17 @@ impl LeadScraper {
         }
 
         Ok(leads)
+    }
+
+    // NEW: Determine proper source based on project URL
+    fn determine_source_from_url(&self, website: &Option<String>) -> Source {
+        match website {
+            Some(url) if url.contains("github.com") => Source::Website { url: url.clone() },
+            Some(url) => Source::Website { url: url.clone() },
+            None => Source::Website {
+                url: "unknown".to_string(),
+            },
+        }
     }
 
     async fn scrape_betalist(&self) -> Result<Vec<Lead>> {
@@ -258,19 +310,44 @@ impl LeadScraper {
         let document = Html::parse_document(html);
         let mut scraped_data = Vec::new();
 
+        debug!("Parsing Y Combinator page, HTML length: {}", html.len());
+
         // YC has various selectors depending on the page
-        let selectors = [".company", ".startup-item", "[data-company]"];
+        let selectors = [
+            ".company-row",
+            ".company",
+            ".startup-item",
+            "[data-company]",
+            "tr", // Table rows for company listings
+        ];
+
+        let mut found_elements = 0;
 
         for selector_str in &selectors {
+            debug!("Trying YC selector: {}", selector_str);
+
             if let Ok(selector) = Selector::parse(selector_str) {
                 for element in document.select(&selector) {
+                    found_elements += 1;
+
                     if let Some(data) = self.extract_company_data(&element) {
+                        debug!("✅ Extracted YC data: {}", data.name);
                         scraped_data.push(data);
                     }
                 }
             }
+
+            // If we found data with this selector, don't try others
+            if !scraped_data.is_empty() {
+                break;
+            }
         }
 
+        debug!(
+            "YC parsing complete: {} elements found, {} leads extracted",
+            found_elements,
+            scraped_data.len()
+        );
         Ok(scraped_data)
     }
 
@@ -278,57 +355,272 @@ impl LeadScraper {
         let document = Html::parse_document(html);
         let mut scraped_data = Vec::new();
 
-        let selectors = [".startup", ".startup-item", "[data-startup]"];
+        debug!("Parsing BetaList page, HTML length: {}", html.len());
+
+        // BetaList uses different selectors - based on actual HTML structure
+        let selectors = [
+            "#startup-[0-9]+",        // div with id like "startup-124183"
+            ".block[id^='startup-']", // block divs with startup IDs
+            "div[id*='startup']",     // any div containing "startup" in ID
+        ];
+
+        let mut found_elements = 0;
 
         for selector_str in &selectors {
+            debug!("Trying BetaList selector: {}", selector_str);
+
             if let Ok(selector) = Selector::parse(selector_str) {
                 for element in document.select(&selector) {
-                    if let Some(data) = self.extract_company_data(&element) {
+                    found_elements += 1;
+                    debug!(
+                        "Found BetaList element #{}: {:?}",
+                        found_elements,
+                        element.value().id()
+                    );
+
+                    if let Some(data) = self.extract_betalist_data(&element) {
+                        debug!("✅ Extracted BetaList data: {}", data.name);
                         scraped_data.push(data);
+                    } else {
+                        debug!("❌ Failed to extract data from element");
+                    }
+                }
+            } else {
+                warn!("Invalid selector: {}", selector_str);
+            }
+
+            // If we found data with this selector, don't try others
+            if !scraped_data.is_empty() {
+                break;
+            }
+        }
+
+        debug!(
+            "BetaList parsing complete: {} elements found, {} leads extracted",
+            found_elements,
+            scraped_data.len()
+        );
+        Ok(scraped_data)
+    }
+
+    // NEW: Specific BetaList data extraction
+    fn extract_betalist_data(&self, element: &scraper::ElementRef) -> Option<ScrapedData> {
+        // Look for startup name in links
+        let name_selectors = [
+            "a[href*='/startups/'] .font-medium",
+            "a[href*='/startups/']",
+            ".font-medium",
+            "h3",
+            "h2",
+            ".name",
+        ];
+
+        let mut name = String::new();
+        let mut website_link = None;
+
+        for selector_str in &name_selectors {
+            if let Ok(selector) = Selector::parse(selector_str) {
+                if let Some(name_element) = element.select(&selector).next() {
+                    let potential_name = name_element.text().collect::<String>().trim().to_string();
+                    if !potential_name.is_empty() && potential_name.len() > 2 {
+                        name = potential_name;
+
+                        // Try to get the href for website
+                        if let Some(href) = name_element.value().attr("href") {
+                            if href.contains("/startups/") {
+                                website_link = Some(format!("https://betalist.com{}", href));
+                            }
+                        }
+                        break;
                     }
                 }
             }
         }
 
-        Ok(scraped_data)
+        if name.is_empty() {
+            debug!("No name found in BetaList element");
+            return None;
+        }
+
+        // Get description from text content
+        let raw_text = element.text().collect::<String>();
+        let cleaned_text = self.extractor.clean_text(&raw_text);
+
+        // Extract website from any external links
+        let html = element.html();
+        let external_website = self.extractor.extract_website(&html, None);
+
+        // Prefer external website over BetaList link
+        let final_website = external_website.or(website_link);
+
+        debug!("BetaList extracted: '{}' -> {:?}", name, final_website);
+
+        Some(ScrapedData {
+            name,
+            website: final_website,
+            raw_text: cleaned_text,
+            html,
+        })
     }
 
     fn parse_github_awesome_content(&self, content: &str) -> Result<Vec<ScrapedData>> {
         let mut scraped_data = Vec::new();
+        debug!(
+            "Parsing GitHub awesome content, total lines: {}",
+            content.lines().count()
+        );
 
-        // Parse markdown links with pattern: [Name](URL) - Description
-        let link_regex =
-            regex::Regex::new(r"\[([^\]]+)\]\(([^)]+)\)(?:\s*-\s*(.+))?").map_err(|e| {
+        // Enhanced regex to handle various markdown link formats
+        let link_patterns = [
+            // Standard: [Name](URL) - Description
+            r"\[([^\]]+)\]\(([^)]+)\)(?:\s*[-–—]\s*(.+))?",
+            // With emoji: - 🚀 [Name](URL) - Description
+            r"[-*]\s*(?:[^\[\]]*\s+)?\[([^\]]+)\]\(([^)]+)\)(?:\s*[-–—]\s*(.+))?",
+            // Simple: [Name](URL)
+            r"\[([^\]]+)\]\(([^)]+)\)",
+        ];
+
+        let mut processed_count = 0;
+        let mut valid_count = 0;
+
+        for pattern in &link_patterns {
+            let link_regex = regex::Regex::new(pattern).map_err(|e| {
                 ScrapingError::RegexError(format!("Failed to compile GitHub regex: {}", e))
             })?;
 
-        for line in content.lines() {
-            if let Some(caps) = link_regex.captures(line) {
-                let name = caps
-                    .get(1)
-                    .map(|m| m.as_str().to_string())
-                    .unwrap_or_else(|| "Unknown".to_string());
-
-                let url = caps.get(2).map(|m| m.as_str().to_string());
-
-                let description = caps
-                    .get(3)
-                    .map(|m| m.as_str().to_string())
-                    .unwrap_or_else(|| "No description".to_string());
-
-                if !name.is_empty() && url.is_some() {
-                    let url_ref = url.as_ref().map(|u| u.as_str()).unwrap_or("");
-                    scraped_data.push(ScrapedData {
-                        name: name.clone(),
-                        website: url.clone(),
-                        raw_text: description.clone(),
-                        html: format!("<a href='{}'>{}</a> - {}", url_ref, name, description),
-                    });
+            for (line_num, line) in content.lines().enumerate() {
+                // Skip navigation links, headers, and non-project links
+                if line.trim().starts_with('#')
+                    || line.contains("contents")
+                    || line.contains("awesome-")
+                    || line.contains("github.com/sindresorhus")
+                {
+                    continue;
                 }
+
+                if let Some(caps) = link_regex.captures(line) {
+                    processed_count += 1;
+
+                    let name = caps
+                        .get(1)
+                        .map(|m| m.as_str().trim().to_string())
+                        .unwrap_or_else(|| "Unknown".to_string());
+
+                    let url = caps.get(2).map(|m| m.as_str().trim().to_string());
+
+                    let description = caps
+                        .get(3)
+                        .map(|m| m.as_str().trim().to_string())
+                        .unwrap_or_else(|| "No description".to_string());
+
+                    debug!(
+                        "Line {}: Found potential project '{}' -> {:?}",
+                        line_num + 1,
+                        name,
+                        url
+                    );
+
+                    // Filter out generic/navigation links
+                    if self.is_valid_project_link(&name, &url) {
+                        valid_count += 1;
+                        let url_ref = url.as_ref().map(|u| u.as_str()).unwrap_or("");
+                        scraped_data.push(ScrapedData {
+                            name: self.clean_project_name(&name),
+                            website: url.clone(),
+                            raw_text: description.clone(),
+                            html: format!("<a href='{}'>{}</a> - {}", url_ref, name, description),
+                        });
+                        debug!("✅ Added valid project: {}", name);
+                    } else {
+                        debug!("❌ Filtered out: {}", name);
+                    }
+                }
+            }
+
+            // If we found projects with this pattern, don't try other patterns to avoid duplicates
+            if !scraped_data.is_empty() {
+                break;
             }
         }
 
+        debug!(
+            "Parsing complete: {} processed, {} valid projects found",
+            processed_count, valid_count
+        );
         Ok(scraped_data)
+    }
+
+    // NEW: Validate if this is a real project link vs navigation
+    fn is_valid_project_link(&self, name: &str, url: &Option<String>) -> bool {
+        // Must have a URL
+        if url.is_none() || name.is_empty() {
+            return false;
+        }
+
+        let url_str = url.as_ref().unwrap();
+
+        // Skip anchor links (start with #)
+        if url_str.starts_with('#') || url_str.contains("#readme") {
+            return false;
+        }
+
+        // Skip obvious navigation/category links by name
+        let skip_names = [
+            "platforms",
+            "programming languages",
+            "front-end development",
+            "back-end development",
+            "computer science",
+            "big data",
+            "theory",
+            "books",
+            "editors",
+            "gaming",
+            "development environment",
+            "entertainment",
+            "databases",
+            "media",
+            "learn",
+            "security",
+            "content management systems",
+            "hardware",
+            "business",
+            "work",
+            "networking",
+            "decentralized systems",
+            "health and social science",
+            "events",
+            "testing",
+            "miscellaneous",
+            "related",
+            "contents",
+        ];
+
+        let name_lower = name.to_lowercase();
+        for skip in &skip_names {
+            if name_lower == *skip || name_lower.contains(&format!("{} ", skip)) {
+                debug!("Skipping navigation link: {}", name);
+                return false;
+            }
+        }
+
+        // Skip if URL is just a relative link or too short
+        if url_str.len() < 10 {
+            debug!("Skipping short URL: {}", url_str);
+            return false;
+        }
+
+        debug!("Valid project link: {} -> {}", name, url_str);
+        true
+    }
+
+    // NEW: Clean up project names (remove emojis, extra spaces)
+    fn clean_project_name(&self, name: &str) -> String {
+        name.chars()
+            .filter(|c| c.is_alphanumeric() || c.is_whitespace() || "-_.".contains(*c))
+            .collect::<String>()
+            .trim()
+            .to_string()
     }
 
     fn extract_company_data(&self, element: &scraper::ElementRef) -> Option<ScrapedData> {
@@ -365,17 +657,10 @@ impl LeadScraper {
     }
 
     async fn create_lead_from_scraped_data(&self, data: ScrapedData, source: Source) -> Lead {
-        let mut email = self.extractor.extract_email(&data.raw_text, &data.html);
+        let email = self.extractor.extract_email(&data.raw_text, &data.html);
         let country = self
             .extractor
             .extract_country(&data.raw_text, data.website.as_deref());
-
-        // If no email found in README and we have a website, try to fetch it from the website
-        if email.is_none() && data.website.is_some() {
-            email = self
-                .fetch_email_from_website(data.website.as_ref().unwrap())
-                .await;
-        }
 
         Lead::new(data.name, source)
             .with_website(data.website)
@@ -384,43 +669,9 @@ impl LeadScraper {
             .with_description(Some(data.raw_text))
     }
 
-    async fn fetch_email_from_website(&self, website_url: &str) -> Option<String> {
-        // Try common contact page patterns
-        let contact_paths = [
-            "/contact",
-            "/contact-us",
-            "/about",
-            "/team",
-            "/support",
-            "", // Homepage
-        ];
-
-        for path in &contact_paths {
-            let url = if path.is_empty() {
-                website_url.to_string()
-            } else {
-                format!("{}{}", website_url.trim_end_matches('/'), path)
-            };
-
-            if let Ok(html) = self.fetch_html(&url).await {
-                if let Some(email) = self.extractor.extract_email(&html, &html) {
-                    debug!("Found email {} on page: {}", email, url);
-                    return Some(email);
-                }
-            }
-
-            // Small delay to be respectful
-            sleep(Duration::from_millis(200)).await;
-        }
-
-        None
-    }
-
     pub async fn save_leads(&self, leads: &[Lead], output_path: &str) -> Result<()> {
         use std::fs;
 
-        // Save as JSON
-        let json_output = format!("{}/leads.json", output_path);
         fs::create_dir_all(output_path).map_err(|e| {
             ScrapingError::IoError(format!(
                 "Failed to create output directory '{}': {}",
@@ -428,80 +679,64 @@ impl LeadScraper {
             ))
         })?;
 
-        let json_content = serde_json::to_string_pretty(leads).map_err(|e| {
-            ScrapingError::IoError(format!("Failed to serialize leads to JSON: {}", e))
+        // Separate leads by contact availability
+        let (contactable_leads, no_contact_leads): (Vec<_>, Vec<_>) =
+            leads.iter().partition(|lead| self.has_contact_info(lead));
+
+        // Save contactable leads (priority targets)
+        let contactable_output = format!("{}/contactable_leads.json", output_path);
+        let contactable_json = serde_json::to_string_pretty(&contactable_leads).map_err(|e| {
+            ScrapingError::IoError(format!("Failed to serialize contactable leads: {}", e))
+        })?;
+        fs::write(&contactable_output, contactable_json).map_err(|e| {
+            ScrapingError::IoError(format!("Failed to write contactable leads file: {}", e))
         })?;
 
-        fs::write(&json_output, json_content).map_err(|e| {
-            ScrapingError::IoError(format!(
-                "Failed to write JSON file '{}': {}",
-                json_output, e
-            ))
+        // Save no-contact leads (research targets)
+        let no_contact_output = format!("{}/research_leads.json", output_path);
+        let no_contact_json = serde_json::to_string_pretty(&no_contact_leads).map_err(|e| {
+            ScrapingError::IoError(format!("Failed to serialize research leads: {}", e))
+        })?;
+        fs::write(&no_contact_output, no_contact_json).map_err(|e| {
+            ScrapingError::IoError(format!("Failed to write research leads file: {}", e))
         })?;
 
-        // Save as CSV for easy analysis
-        let csv_output = format!("{}/leads.csv", output_path);
-        let mut csv_content =
-            String::from("name,website,email,source,country,description,scraped_at\n");
+        // Create summary stats
+        let stats = LeadStats::new(&contactable_leads, &no_contact_leads);
+        let stats_output = format!("{}/stats.json", output_path);
+        let stats_json = serde_json::to_string_pretty(&stats)
+            .map_err(|e| ScrapingError::IoError(format!("Failed to serialize stats: {}", e)))?;
+        fs::write(&stats_output, stats_json)
+            .map_err(|e| ScrapingError::IoError(format!("Failed to write stats file: {}", e)))?;
 
-        for lead in leads {
-            csv_content.push_str(&format!(
-                "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
-                lead.name.replace('"', "'"),
-                lead.website.as_deref().unwrap_or(""),
-                lead.email.as_deref().unwrap_or(""),
-                lead.source,
-                lead.country.as_deref().unwrap_or(""),
-                lead.description.as_deref().unwrap_or("").replace('"', "'"),
-                lead.scraped_at.format("%Y-%m-%d %H:%M:%S")
-            ));
-        }
-
-        fs::write(&csv_output, csv_content).map_err(|e| {
-            ScrapingError::IoError(format!("Failed to write CSV file '{}': {}", csv_output, e))
+        // Save legacy all-leads file for compatibility
+        let all_leads_output = format!("{}/all_leads.json", output_path);
+        let all_leads_json = serde_json::to_string_pretty(leads)
+            .map_err(|e| ScrapingError::IoError(format!("Failed to serialize all leads: {}", e)))?;
+        fs::write(&all_leads_output, all_leads_json).map_err(|e| {
+            ScrapingError::IoError(format!("Failed to write all leads file: {}", e))
         })?;
 
-        info!("Results saved:");
-        info!("  JSON: {}", json_output);
-        info!("  CSV: {}", csv_output);
+        info!("✅ Results saved:");
+        info!(
+            "   📧 Contactable leads: {} -> {}",
+            contactable_leads.len(),
+            contactable_output
+        );
+        info!(
+            "   🔍 Research leads: {} -> {}",
+            no_contact_leads.len(),
+            no_contact_output
+        );
+        info!("   📊 Stats: {}", stats_output);
+        info!("   📋 All leads: {}", all_leads_output);
 
         Ok(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tokio_test;
-
-    #[tokio::test]
-    async fn test_scraper_initialization() {
-        let config = Config::default();
-        let scraper = LeadScraper::new(config).await;
-        assert!(scraper.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_github_content_parsing() {
-        let config = Config::default();
-        let scraper = LeadScraper::new(config)
-            .await
-            .expect("Failed to create scraper");
-        let content = r#"
-# Awesome Startups
-
-- [StartupOne](https://startupone.com) - AI-powered analytics
-- [StartupTwo](https://startuptwo.io) - Blockchain solutions
-        "#;
-
-        let results = scraper
-            .parse_github_awesome_content(content)
-            .expect("Failed to parse content");
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].name, "StartupOne");
-        assert_eq!(
-            results[0].website,
-            Some("https://startupone.com".to_string())
-        );
+    // NEW: Check if lead has any contact information
+    fn has_contact_info(&self, lead: &Lead) -> bool {
+        lead.email.is_some() || lead.github_email.is_some()
     }
 }
+

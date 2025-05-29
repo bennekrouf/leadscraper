@@ -15,6 +15,7 @@ pub struct ScraperConfig {
     pub timeout_seconds: u64,
     pub max_concurrent_requests: usize,
     pub user_agent: String,
+    pub github_token: Option<String>, // NEW: Optional GitHub token for higher rate limits
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -87,6 +88,7 @@ impl Default for Config {
                 timeout_seconds: 30,
                 max_concurrent_requests: 10,
                 user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36".to_string(),
+                github_token: None,
             },
             sources: SourcesConfig {
                 ycombinator: YCombinatorConfig {
@@ -121,3 +123,4 @@ impl Default for Config {
         }
     }
 }
+
