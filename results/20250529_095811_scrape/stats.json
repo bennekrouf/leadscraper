@@ -1,0 +1,78 @@
+{
+  "total_leads": 1341,
+  "contactable_leads": 10,
+  "research_leads": 1331,
+  "contact_rate": 0.74571216,
+  "sources_breakdown": {
+    "BetaList": {
+      "total": 20,
+      "with_contact": 0,
+      "contact_rate": 0.0
+    },
+    "Website": {
+      "total": 1075,
+      "with_contact": 0,
+      "contact_rate": 0.0
+    },
+    "GitHub Project": {
+      "total": 246,
+      "with_contact": 10,
+      "contact_rate": 4.0650406
+    }
+  },
+  "countries_breakdown": {
+    "their phone": 1,
+    "pretty much everything ranging from social media to university departments": 1,
+    "your bookmarks": 2,
+    "Sweden": 2,
+    "the OpenBSD project": 1,
+    "a user": 1,
+    "Italy": 4,
+    "previous years and presents them on a web page with a simple slideshow": 1,
+    "pages reducing internet bandwidth usage": 1,
+    "any V": 1,
+    "geo coordinates": 1,
+    "QIF": 1,
+    "many banks": 1,
+    "your mobile phone": 1,
+    "your command line": 1,
+    "Vox Media": 1,
+    "Edge": 1,
+    "France": 5,
+    "employee management": 1,
+    "torrents in the browser or from a Chromecast": 1,
+    "Codiad": 1,
+    "attacks and exploits": 1,
+    "everywhere": 1,
+    "data": 1,
+    "directories": 1,
+    "Salut": 1,
+    "ZIM files": 1,
+    "ideation through delivery": 1,
+    "any device": 1,
+    "the Awesome dataset using a browser extension": 1,
+    "lead": 1,
+    "all major national weather services": 1,
+    "Canada": 3,
+    "any URL": 1,
+    "web": 1,
+    "your database information": 1,
+    "Switzerland": 3,
+    "Netherlands": 2,
+    "Germany": 11,
+    "big expensive solutions": 1,
+    "United Kingdom": 2,
+    "each given feed": 1,
+    "device to device": 1,
+    "dozens of websites": 1,
+    "multiple sources to multiple scrobbling services": 1,
+    "the command line": 1,
+    "a central core": 1
+  },
+  "email_types": {
+    "direct_emails": 0,
+    "github_emails": 10,
+    "no_emails": 1331
+  },
+  "generated_at": "2025-05-29T09:58:50.003899Z"
+}

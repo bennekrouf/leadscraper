@@ -2,8 +2,8 @@ use crate::{
     config::Config,
     errors::{Result, ScrapingError},
     extractors::DataExtractor,
-    models::{Lead, LeadStats},
-    scrapers::{create_scrapers, SourceScraper},
+    models::{Lead, LeadStats, RunMetadata},
+    scrapers::create_scrapers,
 };
 use reqwest::Client;
 use std::time::Duration;
@@ -119,6 +119,20 @@ impl LeadScraper {
 
     /// Save leads to output directory with categorization and stats
     pub async fn save_leads(&self, leads: &[Lead], output_path: &str) -> Result<()> {
+        let start_time = chrono::Utc::now();
+        let end_time = chrono::Utc::now();
+        self.save_leads_with_metadata(leads, output_path, start_time, end_time)
+            .await
+    }
+
+    /// Save leads with run metadata including timestamps
+    pub async fn save_leads_with_metadata(
+        &self,
+        leads: &[Lead],
+        output_path: &str,
+        start_time: chrono::DateTime<chrono::Utc>,
+        end_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<()> {
         use std::fs;
 
         info!("💾 Saving results to: {}", output_path);
@@ -152,13 +166,22 @@ impl LeadScraper {
             ScrapingError::IoError(format!("Failed to write research leads file: {}", e))
         })?;
 
-        // Create comprehensive stats
+        // Create comprehensive stats with run metadata
         let stats = LeadStats::new(&contactable_leads, &research_leads);
+        let run_metadata = RunMetadata::new(start_time, end_time, &stats);
+
         let stats_output = format!("{}/stats.json", output_path);
         let stats_json = serde_json::to_string_pretty(&stats)
             .map_err(|e| ScrapingError::IoError(format!("Failed to serialize stats: {}", e)))?;
         fs::write(&stats_output, stats_json)
             .map_err(|e| ScrapingError::IoError(format!("Failed to write stats file: {}", e)))?;
+
+        // Save run metadata
+        let metadata_output = format!("{}/run_metadata.json", output_path);
+        let metadata_json = serde_json::to_string_pretty(&run_metadata)
+            .map_err(|e| ScrapingError::IoError(format!("Failed to serialize metadata: {}", e)))?;
+        fs::write(&metadata_output, metadata_json)
+            .map_err(|e| ScrapingError::IoError(format!("Failed to write metadata file: {}", e)))?;
 
         // Save legacy all-leads file for compatibility
         let all_leads_output = format!("{}/all_leads.json", output_path);
@@ -186,6 +209,7 @@ impl LeadScraper {
         info!("   📊 Detailed stats: {}", stats_output);
         info!("   📋 All leads (JSON): {}", all_leads_output);
         info!("   📄 CSV export: {}/all_leads.csv", output_path);
+        info!("   ⏱️  Run metadata: {}", metadata_output);
 
         // Print top-level stats
         info!("🎯 Final Statistics:");

@@ -1,0 +1,25 @@
+{
+  "run_id": "20250529_095811",
+  "start_time": "2025-05-29T09:58:11.776930Z",
+  "end_time": "2025-05-29T09:58:49.967070Z",
+  "duration_seconds": 38.19,
+  "total_leads": 1341,
+  "contactable_leads": 10,
+  "contact_rate": 0.74571216,
+  "scraper_version": "0.1.0",
+  "config_summary": {
+    "enabled_sources": [
+      "BetaList",
+      "Website",
+      "GitHub Project"
+    ],
+    "timeout_seconds": 30,
+    "github_token_configured": false
+  },
+  "performance": {
+    "leads_per_second": 35.11390416339356,
+    "sources_processed": 3,
+    "successful_sources": 3,
+    "failed_sources": 0
+  }
+}

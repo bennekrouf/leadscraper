@@ -538,3 +538,4 @@ mod tests {
         assert_eq!(email, Some("test@example.com".to_string()));
     }
 }
+

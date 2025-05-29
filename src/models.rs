@@ -50,6 +50,36 @@ pub struct EmailTypeStats {
     pub no_emails: usize,
 }
 
+// NEW: Run metadata to track scraping sessions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunMetadata {
+    pub run_id: String,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
+    pub duration_seconds: f64,
+    pub total_leads: usize,
+    pub contactable_leads: usize,
+    pub contact_rate: f32,
+    pub scraper_version: String,
+    pub config_summary: ConfigSummary,
+    pub performance: PerformanceMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigSummary {
+    pub enabled_sources: Vec<String>,
+    pub timeout_seconds: u64,
+    pub github_token_configured: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    pub leads_per_second: f64,
+    pub sources_processed: usize,
+    pub successful_sources: usize,
+    pub failed_sources: usize,
+}
+
 impl std::fmt::Display for Source {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -120,7 +150,7 @@ impl Lead {
         self
     }
 
-    // NEW: Contact scoring methods
+    // Contact scoring methods
     pub fn has_contact(&self) -> bool {
         self.email.is_some() || self.github_email.is_some()
     }
@@ -232,6 +262,44 @@ impl LeadStats {
                 no_emails,
             },
             generated_at: Utc::now(),
+        }
+    }
+}
+
+impl RunMetadata {
+    pub fn new(start_time: DateTime<Utc>, end_time: DateTime<Utc>, stats: &LeadStats) -> Self {
+        let duration = end_time - start_time;
+        let duration_seconds = duration.num_milliseconds() as f64 / 1000.0;
+
+        let leads_per_second = if duration_seconds > 0.0 {
+            stats.total_leads as f64 / duration_seconds
+        } else {
+            0.0
+        };
+
+        // Generate a simple run ID based on timestamp
+        let run_id = start_time.format("%Y%m%d_%H%M%S").to_string();
+
+        Self {
+            run_id,
+            start_time,
+            end_time,
+            duration_seconds,
+            total_leads: stats.total_leads,
+            contactable_leads: stats.contactable_leads,
+            contact_rate: stats.contact_rate,
+            scraper_version: env!("CARGO_PKG_VERSION").to_string(),
+            config_summary: ConfigSummary {
+                enabled_sources: stats.sources_breakdown.keys().cloned().collect(),
+                timeout_seconds: 30, // Default value - could be passed from config
+                github_token_configured: false, // Could be passed from config
+            },
+            performance: PerformanceMetrics {
+                leads_per_second,
+                sources_processed: stats.sources_breakdown.len(),
+                successful_sources: stats.sources_breakdown.len(), // Simplification
+                failed_sources: 0,                                 // Could be tracked from scraper
+            },
         }
     }
 }

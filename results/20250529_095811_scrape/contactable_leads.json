@@ -1,0 +1,162 @@
+[
+  {
+    "name": "StumbleUponAwesome",
+    "website": "https://github.com/basharovV/StumbleUponAwesome",
+    "email": null,
+    "github_email": "slavbacharov@gmail.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/basharovV/StumbleUponAwesome"
+      }
+    },
+    "country": "the Awesome dataset using a browser extension",
+    "description": "Discover random pages from the Awesome dataset using a browser extension.",
+    "scraped_at": "2025-05-29T09:58:15.611610Z"
+  },
+  {
+    "name": "EDA",
+    "website": "https://github.com/jortilles/EDA",
+    "email": null,
+    "github_email": "ronald.chavez@jortilles.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/jortilles/EDA"
+      }
+    },
+    "country": null,
+    "description": "Web application for data analysis and visualization. `AGPL-3.0` `Nodejs/Docker`",
+    "scraped_at": "2025-05-29T09:58:17.842431Z"
+  },
+  {
+    "name": "ghstats",
+    "website": "https://github.com/vladkens/ghstats",
+    "email": null,
+    "github_email": "v.pronsky@gmail.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/vladkens/ghstats"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:18.420452Z"
+  },
+  {
+    "name": "Shynet",
+    "website": "https://github.com/milesmcc/shynet",
+    "email": null,
+    "github_email": "joshua@jtprince.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/milesmcc/shynet"
+      }
+    },
+    "country": null,
+    "description": "Modern, privacy-friendly, and detailed web analytics that works without cookies or JS. `Apache-2.0` `Python/Docker`",
+    "scraped_at": "2025-05-29T09:58:18.988731Z"
+  },
+  {
+    "name": "Statistics for Strava",
+    "website": "https://github.com/robiningelbrecht/statistics-for-strava",
+    "email": null,
+    "github_email": "solyates@gmail.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/robiningelbrecht/statistics-for-strava"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:20.276330Z"
+  },
+  {
+    "name": "Ganymede",
+    "website": "https://github.com/Zibbp/ganymede",
+    "email": null,
+    "github_email": "zibbp@zibbp.net",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/Zibbp/ganymede"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:20.858214Z"
+  },
+  {
+    "name": "LiveStreamDVR",
+    "website": "https://github.com/MrBrax/LiveStreamDVR",
+    "email": null,
+    "github_email": "braxen@braxnet.org",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/MrBrax/LiveStreamDVR"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:21.496133Z"
+  },
+  {
+    "name": "Webarchive",
+    "website": "https://github.com/derfenix/webarchive",
+    "email": null,
+    "github_email": "hajdas@hajdas.de",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/derfenix/webarchive"
+      }
+    },
+    "country": "your bookmarks",
+    "description": "Lightweight self-hosted _wayback machine_ that creates HTML and PDF files from your bookmarks. `BSD-3-Clause` `Go`",
+    "scraped_at": "2025-05-29T09:58:22.840192Z"
+  },
+  {
+    "name": "BookBounty",
+    "website": "https://github.com/TheWicklowWolf/BookBounty",
+    "email": null,
+    "github_email": "patrick.tweddell@mail.mcgill.ca",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/TheWicklowWolf/BookBounty"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:23.460691Z"
+  },
+  {
+    "name": "Github Ntfy",
+    "website": "https://github.com/BreizhHardware/ntfy_alerts",
+    "email": null,
+    "github_email": "fpmovie4@gmail.com",
+    "linkedin": null,
+    "twitter": null,
+    "source": {
+      "Website": {
+        "url": "https://github.com/BreizhHardware/ntfy_alerts"
+      }
+    },
+    "country": null,
+    "description": "No description",
+    "scraped_at": "2025-05-29T09:58:24.885070Z"
+  }
+]
