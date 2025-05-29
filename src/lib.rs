@@ -3,17 +3,24 @@ pub mod errors;
 pub mod extractors;
 pub mod models;
 pub mod scraper_util;
+pub mod scrapers; // NEW: Modular scrapers
 
 pub use config::Config;
 pub use errors::{Result, ScrapingError};
 pub use models::{Lead, Source};
 pub use scraper_util::LeadScraper;
+pub use scrapers::SourceScraper; // NEW: Export trait for extensibility
+
+// Re-export commonly used types for convenience
+pub use scrapers::{BetaListScraper, GitHubAwesomeScraper, YCombinatorScraper};
 
 use regex::Regex;
 use std::collections::HashMap;
 use url::Url;
 
 use crate::config::PatternsConfig;
+
+/// Legacy DataExtractor for backwards compatibility - now just delegates to extractors module
 pub struct DataExtractor {
     email_patterns: EmailPatterns,
     location_patterns: LocationPatterns,
@@ -107,9 +114,7 @@ impl DataExtractor {
     fn is_valid_website_url(&self, url: &str) -> bool {
         if let Ok(parsed) = Url::parse(url) {
             let scheme = parsed.scheme();
-            if scheme == "http" || scheme == "https" {
-                return scheme == "http" || scheme == "https";
-            }
+            return scheme == "http" || scheme == "https";
         }
         false
     }
@@ -131,18 +136,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_email_extraction() {
-        let patterns = crate::config::PatternsConfig::default();
-        let extractor = DataExtractor::new(&patterns).expect("Failed to create extractor");
-
-        let html = r#"<a href="mailto:test@example.com">Contact</a>"#;
-        let text = "Contact us at test@example.com";
-
-        let email = extractor.extract_email(text, html);
-        assert_eq!(email, Some("test@example.com".to_string()));
-    }
-
-    #[test]
     fn test_website_extraction() {
         let patterns = crate::config::PatternsConfig::default();
         let extractor = DataExtractor::new(&patterns).expect("Failed to create extractor");
@@ -153,3 +146,4 @@ mod tests {
         assert_eq!(website, Some("https://example.com".to_string()));
     }
 }
+

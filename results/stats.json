@@ -1,20 +1,78 @@
 {
-  "total_leads": 20,
-  "contactable_leads": 0,
-  "research_leads": 20,
-  "contact_rate": 0.0,
+  "total_leads": 1341,
+  "contactable_leads": 10,
+  "research_leads": 1331,
+  "contact_rate": 0.74571216,
   "sources_breakdown": {
+    "Website": {
+      "total": 1075,
+      "with_contact": 0,
+      "contact_rate": 0.0
+    },
+    "GitHub Project": {
+      "total": 246,
+      "with_contact": 10,
+      "contact_rate": 4.0650406
+    },
     "BetaList": {
       "total": 20,
       "with_contact": 0,
       "contact_rate": 0.0
     }
   },
-  "countries_breakdown": {},
+  "countries_breakdown": {
+    "a central core": 1,
+    "Germany": 11,
+    "their phone": 1,
+    "any URL": 1,
+    "a user": 1,
+    "data": 1,
+    "geo coordinates": 1,
+    "multiple sources to multiple scrobbling services": 1,
+    "dozens of websites": 1,
+    "United Kingdom": 2,
+    "Canada": 3,
+    "everywhere": 1,
+    "previous years and presents them on a web page with a simple slideshow": 1,
+    "your database information": 1,
+    "France": 5,
+    "QIF": 1,
+    "Switzerland": 3,
+    "the OpenBSD project": 1,
+    "Vox Media": 1,
+    "employee management": 1,
+    "each given feed": 1,
+    "lead": 1,
+    "torrents in the browser or from a Chromecast": 1,
+    "any device": 1,
+    "Netherlands": 2,
+    "Sweden": 2,
+    "Italy": 4,
+    "pages reducing internet bandwidth usage": 1,
+    "Codiad": 1,
+    "Edge": 1,
+    "directories": 1,
+    "ideation through delivery": 1,
+    "pretty much everything ranging from social media to university departments": 1,
+    "your mobile phone": 1,
+    "ZIM files": 1,
+    "your command line": 1,
+    "the Awesome dataset using a browser extension": 1,
+    "the command line": 1,
+    "any V": 1,
+    "many banks": 1,
+    "big expensive solutions": 1,
+    "Salut": 1,
+    "attacks and exploits": 1,
+    "web": 1,
+    "your bookmarks": 2,
+    "device to device": 1,
+    "all major national weather services": 1
+  },
   "email_types": {
     "direct_emails": 0,
-    "github_emails": 0,
-    "no_emails": 20
+    "github_emails": 10,
+    "no_emails": 1331
   },
-  "generated_at": "2025-05-29T08:01:56.015041Z"
+  "generated_at": "2025-05-29T08:32:33.536436Z"
 }

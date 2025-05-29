@@ -51,6 +51,7 @@ struct GitHubUser {
     email: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct DataExtractor {
     email_patterns: EmailPatterns,
     location_patterns: LocationPatterns,
@@ -59,11 +60,14 @@ pub struct DataExtractor {
     github_token: Option<String>,
 }
 
+// Also need to make the inner structs cloneable
+#[derive(Clone)]
 struct EmailPatterns {
     mailto: Regex,
     generic: Regex,
 }
 
+#[derive(Clone)]
 struct LocationPatterns {
     country_indicators: Vec<Regex>,
 }
@@ -534,4 +538,3 @@ mod tests {
         assert_eq!(email, Some("test@example.com".to_string()));
     }
 }
-
